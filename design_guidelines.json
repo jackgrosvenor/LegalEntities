@@ -1,0 +1,100 @@
+{
+  "theme": "Light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) - Neobrutalist Schematic Variant",
+  "design_philosophy": "Raw, function-forward aesthetics. Grids as foreground elements, monospaced fonts for exact data representation, and high-contrast square nodes (Bento / Terminal look) to map complex legal entities cleanly. No soft shadows; use hard edges and precise borders to project technical authority.",
+  "colors": {
+    "background": {
+      "app": "#FFFFFF",
+      "canvas": "#F4F4F5",
+      "canvas_grid": "#E4E4E7",
+      "sidebar": "#FFFFFF",
+      "drawer": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#09090B",
+      "secondary": "#52525B",
+      "muted": "#71717A",
+      "inverse": "#FFFFFF"
+    },
+    "border": {
+      "subtle": "#E4E4E7",
+      "strong": "#09090B",
+      "focus": "#2563EB"
+    },
+    "accent": {
+      "equity_edge": "#2563EB",
+      "gp_edge": "#EA580C",
+      "top_entity_bg": "#09090B",
+      "child_entity_bg": "#FFFFFF"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "'Chivo', sans-serif",
+      "body": "'Inter', sans-serif",
+      "mono": "'IBM Plex Mono', monospace"
+    },
+    "hierarchy": {
+      "h1": "text-3xl font-bold tracking-tight text-neutral-900",
+      "h2": "text-xl font-semibold tracking-tight text-neutral-900",
+      "overline": "text-[10px] font-mono uppercase tracking-[0.2em] text-neutral-500",
+      "node_title": "text-sm font-bold tracking-tight text-neutral-900",
+      "node_meta": "text-xs font-mono text-neutral-600",
+      "edge_label": "text-[10px] font-mono font-bold tracking-wider px-1 bg-white border border-neutral-900 text-neutral-900"
+    }
+  },
+  "spacing_and_layout": {
+    "strategy": "MODE B: THE CONTROL ROOM GRID",
+    "structure": {
+      "app_wrapper": "flex h-screen w-full overflow-hidden bg-neutral-100",
+      "sidebar": "w-80 flex-shrink-0 bg-white border-r-2 border-neutral-900 h-full flex flex-col shadow-[4px_0px_0px_0px_rgba(0,0,0,0.05)] z-20",
+      "main_canvas": "flex-1 relative h-full bg-zinc-50 pattern-grid-lg",
+      "drawer": "w-96 bg-white border-l-2 border-neutral-900 shadow-[-8px_0px_0px_0px_rgba(0,0,0,0.1)] h-full absolute right-0 top-0 z-30 overflow-y-auto"
+    },
+    "borders": "Exposed grid skeleton. Inputs, buttons, and panels must have rounded-none (0px border-radius) and distinct borders."
+  },
+  "components": {
+    "node_tree": {
+      "library": "reactflow",
+      "node_base": "border-2 border-neutral-900 p-3 min-w-[220px] rounded-none cursor-pointer transition-transform duration-150 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(9,9,11,1)]",
+      "node_top_level": "bg-neutral-900 text-white shadow-[4px_4px_0px_0px_rgba(37,99,235,1)]",
+      "node_child": "bg-white text-neutral-900",
+      "edge_equity": "stroke-blue-600 stroke-[2px]",
+      "edge_gp": "stroke-orange-600 stroke-[2px] stroke-dasharray-[4,4]"
+    },
+    "ui": {
+      "button_primary": "bg-neutral-900 text-white font-mono uppercase text-xs tracking-wider px-4 py-2 rounded-none hover:bg-neutral-800 focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900 transition-colors",
+      "input": "border-2 border-neutral-300 rounded-none px-3 py-2 text-sm focus:border-neutral-900 focus:ring-0 w-full font-mono bg-white",
+      "select": "border-2 border-neutral-300 rounded-none px-3 py-2 text-sm focus:border-neutral-900 focus:ring-0 w-full font-mono bg-white",
+      "badge": "border border-neutral-900 bg-neutral-100 text-[10px] font-mono uppercase px-1.5 py-0.5 text-neutral-900"
+    }
+  },
+  "motion": {
+    "micro_interactions": "Snappy, technical. Avoid long easing.",
+    "drawer_slide": "transform transition-transform duration-200 ease-out",
+    "node_hover": "transition-all duration-150 ease-out"
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "instructions": "Use sharp/regular weights. Avoid soft, rounded icons."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "empty_state",
+        "url": "https://images.unsplash.com/photo-1668183141106-7a57a440212e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwYXJjaGl0ZWN0dXJlJTIwZGV0YWlsc3xlbnwwfHx8fDE3NzYzNTUwMzF8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Minimalist architectural stairs. Use with 10% opacity in the center of the canvas when no Fund ID is selected to provide a sophisticated background."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "INSTALLATION: Run 'yarn add reactflow @phosphor-icons/react'.",
+    "LAYOUT: Create a rigid 'Control Room' layout. Fixed Sidebar on the left (w-80) for Entity Search, Filter Panel, and Fund Selector Dropdown. Main area is the React Flow canvas filling the remaining space.",
+    "TREE LOGIC: When a user selects a Fund ID, build the hierarchy tree using React Flow. Custom nodes must display COMPANY_NAME and ENTITY_TYPE. Nodes where IS_TOP_OF_STRUCTURE=true get the 'node_top_level' styling (black bg, white text). Other nodes get 'node_child' styling.",
+    "EDGES: Edges must display EQUITIX_OWNERSHIP_DECIMAL as a percentage. Use custom React Flow edge labels (bg-white, mono font, bordered). Differentiate edge styles based on RELATION_TYPE (EQUITY=Solid Blue, GENERAL_PARTNER=Dashed Orange).",
+    "DETAIL VIEW: Clicking any node must slide out a Drawer/Panel from the right side showing all available columns from the Entity Master CSV for that entity (JURISDICTION, FUND_NAME, ASSET_NAME, SYMBOLOGIES).",
+    "STYLING: Strictly enforce rounded-none (0px border-radius) on all elements. Use hard neo-brutalist shadows (shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]) to create a technical/schematic vibe.",
+    "CSS BACKGROUND: Implement a CSS grid pattern on the React Flow canvas background to reinforce the graphing tool aesthetic.",
+    "TESTING: Ensure all interactive and key informational elements have a data-testid attribute (e.g., data-testid='fund-selector', data-testid='tree-node-123', data-testid='drawer-close')."
+  ]
+}
