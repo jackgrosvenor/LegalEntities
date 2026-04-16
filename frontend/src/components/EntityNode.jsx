@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Buildings, MapPin } from '@phosphor-icons/react';
+import { Buildings, MapPin, CaretDown, CaretRight } from '@phosphor-icons/react';
 
 const TYPE_LABELS = {
   LimitedCompany: 'Ltd',
@@ -11,6 +11,8 @@ const TYPE_LABELS = {
 
 const EntityNode = memo(({ data, selected }) => {
   const isTop = data.is_top;
+  const isCollapsed = data.isCollapsed;
+  const hasChildren = data.hasChildren;
 
   return (
     <div
@@ -20,7 +22,9 @@ const EntityNode = memo(({ data, selected }) => {
         transition-all duration-150 ease-out
         ${isTop
           ? 'bg-neutral-900 text-white shadow-[4px_4px_0px_0px_rgba(37,99,235,1)]'
-          : 'bg-white text-neutral-900 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]'
+          : isCollapsed
+            ? 'bg-blue-50 text-neutral-900 border-blue-600 shadow-[4px_4px_0px_0px_rgba(37,99,235,0.5)]'
+            : 'bg-white text-neutral-900 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]'
         }
         ${selected ? '-translate-y-1 shadow-[6px_6px_0px_0px_rgba(9,9,11,1)]' : ''}
         hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(9,9,11,1)]
@@ -30,9 +34,17 @@ const EntityNode = memo(({ data, selected }) => {
 
       <div className="flex items-start gap-2 mb-1.5">
         <Buildings size={14} weight="bold" className={isTop ? 'text-blue-400 mt-0.5 flex-shrink-0' : 'text-neutral-400 mt-0.5 flex-shrink-0'} />
-        <p className="text-sm font-bold tracking-tight leading-tight break-words" title={data.label}>
+        <p className="text-sm font-bold tracking-tight leading-tight break-words flex-1" title={data.label}>
           {data.label}
         </p>
+        {hasChildren && (
+          <span className={`flex-shrink-0 mt-0.5 ${isTop ? 'text-white/60' : 'text-neutral-400'}`}>
+            {isCollapsed
+              ? <CaretRight size={12} weight="bold" />
+              : <CaretDown size={12} weight="bold" />
+            }
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -55,6 +67,14 @@ const EntityNode = memo(({ data, selected }) => {
       {data.asset_name && (
         <div className={`mt-1.5 text-[10px] font-mono ${isTop ? 'text-blue-300' : 'text-blue-600'}`}>
           {data.asset_name}
+        </div>
+      )}
+
+      {/* Collapsed indicator */}
+      {isCollapsed && data.hiddenCount > 0 && (
+        <div className="mt-1.5 text-[10px] font-mono font-bold text-blue-600 flex items-center gap-1">
+          <CaretRight size={9} weight="bold" />
+          {data.hiddenCount} hidden {data.hiddenCount === 1 ? 'entity' : 'entities'}
         </div>
       )}
 
