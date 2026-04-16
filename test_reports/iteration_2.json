@@ -1,0 +1,50 @@
+{
+  "summary": "Frontend testing completed for PDF export feature and existing functionality. All 10 features tested successfully. Export PDF button is visible, shows loading state ('Exporting...') during generation, and completes without JavaScript errors. All existing features (fund selector, expand/collapse, fit view, double-click collapse, entity drawer) continue to work correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_entity_mapping_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "React Flow warning about nodeTypes/edgeTypes - these are already defined outside component (lines 24-25 in EntityTree.jsx), warning is a false positive"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (29/29 tests passed - from previous iteration)",
+    "frontend": "100% (10/10 features tested)"
+  },
+  "test_credentials": "No authentication required",
+  "seed_data_creation": "Database pre-seeded with 1756 entities and 1917 relations from CSV files",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "PDF export feature fully tested. Export button at data-testid='export-pdf-btn' works correctly - shows spinner + 'Exporting...' text during generation, generates landscape PDF with fund name as filename. No console errors during export. All action buttons (Expand All, Collapse, Fit View) work. Double-click collapse/expand works. Entity drawer opens on single click and closes properly.",
+  "features_tested": {
+    "pdf_export": [
+      "Export PDF button visible in top-right action bar when fund tree loaded",
+      "Clicking Export PDF button produces NO JavaScript errors",
+      "Export PDF button shows loading state (spinner + 'Exporting...' text) during generation",
+      "Button returns to normal 'Export PDF' state after export completes"
+    ],
+    "existing_features": [
+      "Fund selector works - selected Fund I and tree loaded with 71 entities",
+      "Expand All button works - expands all collapsed nodes",
+      "Collapse button works - collapses branches (shows '43 collapsed' indicator)",
+      "Fit View button works - fits tree to viewport",
+      "Double-click on node collapses/expands its children",
+      "Single click on node opens entity drawer with full details"
+    ]
+  },
+  "console_warnings": [
+    "React Flow warning about nodeTypes/edgeTypes (false positive - already memoized)",
+    "Select controlled/uncontrolled warning (from Emergent script, not app code)"
+  ]
+}

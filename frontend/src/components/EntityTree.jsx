@@ -14,8 +14,10 @@ import 'reactflow/dist/style.css';
 import EntityNode from './EntityNode';
 import OwnershipEdge from './OwnershipEdge';
 import EntityDrawer from './EntityDrawer';
-import { TreeStructure, Spinner, ArrowsOutSimple, ArrowsInSimple, ArrowsOut } from '@phosphor-icons/react';
+import { TreeStructure, Spinner, ArrowsOutSimple, ArrowsInSimple, ArrowsOut, FilePdf } from '@phosphor-icons/react';
 import axios from 'axios';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -101,6 +103,7 @@ function EntityTreeInner({ fundId }) {
   const [selectedEntityId, setSelectedEntityId] = useState(null);
   const [fundName, setFundName] = useState('');
   const [collapsed, setCollapsed] = useState(new Set());
+  const [exporting, setExporting] = useState(false);
   const treeMapsRef = useRef({ parentToChildren: {}, childToParent: {} });
 
   // Fetch tree data
@@ -222,6 +225,107 @@ function EntityTreeInner({ fundId }) {
     fitView({ padding: 0.15, maxZoom: 1, duration: 400 });
   }, [fitView]);
 
+  const handleExportPdf = useCallback(async () => {
+    const viewport = document.querySelector('.react-flow__viewport');
+    if (!viewport) return;
+
+    setExporting(true);
+    try {
+      // Get the bounding box of all nodes to determine the full diagram area
+      const nodeElements = document.querySelectorAll('.react-flow__node');
+      if (nodeElements.length === 0) { setExporting(false); return; }
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      nodeElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        minX = Math.min(minX, rect.left);
+        minY = Math.min(minY, rect.top);
+        maxX = Math.max(maxX, rect.right);
+        maxY = Math.max(maxY, rect.bottom);
+      });
+
+      // Capture the entire react-flow container (includes edges + nodes)
+      const flowContainer = document.querySelector('.react-flow');
+      if (!flowContainer) { setExporting(false); return; }
+
+      const canvas = await html2canvas(flowContainer, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#F4F4F5',
+        scale: 2,
+        logging: false,
+        // Exclude overlays like controls, minimap, buttons from the capture
+        ignoreElements: (element) => {
+          if (element.classList?.contains('react-flow__controls')) return true;
+          if (element.classList?.contains('react-flow__minimap')) return true;
+          if (element.getAttribute?.('data-testid') === 'tree-actions') return true;
+          if (element.getAttribute?.('data-testid') === 'fund-header') return true;
+          if (element.getAttribute?.('data-testid') === 'tree-legend-area') return true;
+          if (element.getAttribute?.('data-testid') === 'entity-drawer') return true;
+          return false;
+        }
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      // Use landscape A3 for large trees, A4 for smaller ones
+      const isLarge = nodes.length > 50;
+      const format = isLarge ? 'a3' : 'a4';
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: format,
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Add title header
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.text(`${fundName || 'Fund'} — Entity Structure`, 10, 12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(100);
+      pdf.text(
+        `${nodes.length}${allNodes.length !== nodes.length ? ` / ${allNodes.length}` : ''} entities · ${edges.length} relations · Exported ${new Date().toLocaleDateString()}`,
+        10, 18
+      );
+      pdf.setTextColor(0);
+
+      // Calculate image dimensions to fit page (with margins and header space)
+      const margin = 10;
+      const headerOffset = 22;
+      const availableWidth = pageWidth - margin * 2;
+      const availableHeight = pageHeight - headerOffset - margin;
+
+      const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
+      const drawWidth = imgWidth * ratio;
+      const drawHeight = imgHeight * ratio;
+
+      // Center the image
+      const offsetX = margin + (availableWidth - drawWidth) / 2;
+      const offsetY = headerOffset + (availableHeight - drawHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawWidth, drawHeight);
+
+      // Add legend footer
+      const footerY = pageHeight - 5;
+      pdf.setFontSize(7);
+      pdf.setTextColor(120);
+      pdf.text('Legend: Blue solid = Equity | Orange dashed = General Partner | Black node = Top of Structure', margin, footerY);
+
+      const fileName = `${(fundName || 'fund').replace(/\s+/g, '_')}_structure.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  }, [fundName, nodes, allNodes, edges]);
+
   const defaultEdgeOptions = useMemo(() => ({ type: 'ownershipEdge' }), []);
 
   const minimapNodeColor = useCallback((node) => {
@@ -282,6 +386,22 @@ function EntityTreeInner({ fundId }) {
       {/* Action buttons */}
       {fundId && nodes.length > 0 && (
         <div className="absolute top-4 right-4 z-10 flex gap-2" data-testid="tree-actions">
+          <button
+            data-testid="export-pdf-btn"
+            onClick={handleExportPdf}
+            disabled={exporting}
+            className="bg-neutral-900 text-white border-2 border-neutral-900 shadow-[4px_4px_0px_0px_rgba(37,99,235,1)] px-3 py-2 flex items-center gap-2 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-wait"
+            title="Export current view as PDF"
+          >
+            {exporting ? (
+              <Spinner size={14} weight="bold" className="animate-spin" />
+            ) : (
+              <FilePdf size={14} weight="bold" />
+            )}
+            <span className="text-[10px] font-mono uppercase tracking-wider">
+              {exporting ? 'Exporting...' : 'Export PDF'}
+            </span>
+          </button>
           <button
             data-testid="expand-all-btn"
             onClick={() => setCollapsed(new Set())}
