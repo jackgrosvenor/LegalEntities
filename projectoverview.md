@@ -10,25 +10,27 @@ The firm manages 52 funds across a portfolio of 1,756 legal entities connected b
 
 ### Data pipeline
 
-1. Two CSV files (`entity_master.csv` and `entity_relations.csv`) are loaded into MongoDB on first startup.
-2. The **Entity Master** contains one row per entity with fields including company name, jurisdiction, entity type, fund association, asset association, and registration symbologies.
-3. The **Entity Relations** file maps parent → child connections between entities, each annotated with an ownership decimal (0–1) and a relation type (`EQUITY` or `GENERAL_PARTNER`).
+1. The user opens the app and is presented with an upload screen — no data is pre-loaded.
+2. The user uploads two CSV files: **Entity Master** and **Entity Relations**.
+3. Both files are parsed entirely in the browser using PapaParse. No data is sent to or stored on the backend.
+4. The parsed data is held in React state for the duration of the session. Refreshing the page clears the data and returns to the upload screen.
 
-### Backend (FastAPI + MongoDB)
+### Backend (FastAPI)
 
-The backend exposes a REST API:
+The backend is a minimal health-check server. It serves no data endpoints — all logic runs client-side.
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/funds` | Returns the 52 valid funds with their IDs and names |
-| `GET /api/entities` | Paginated entity search with filters (name, jurisdiction, type, fund, asset) |
-| `GET /api/entities/filters` | Distinct values for filter dropdowns |
-| `GET /api/entities/{id}` | Full detail for a single entity |
-| `GET /api/funds/{fund_id}/tree` | Builds the hierarchy tree for a fund using BFS from its top-of-structure entity, returning nodes and edges ready for the frontend |
-
-The tree-building algorithm starts from entities marked `IS_TOP_OF_STRUCTURE = true` for the selected fund, then performs a breadth-first traversal following parent → child relations to capture the entire downstream structure — including entities that may not have the fund ID directly assigned.
+| `GET /api/health` | Returns `{status: ok}` |
 
 ### Frontend (React + React Flow + Dagre)
+
+All data processing runs in the browser via `src/lib/dataService.js`:
+
+- **CSV parsing**: PapaParse with type coercion (booleans, numbers, JSON symbologies)
+- **Fund extraction**: Scans entities for unique `FUND_ID` values
+- **Search & filter**: In-memory filtering by name, jurisdiction, type, fund
+- **Tree building**: BFS traversal from `IS_TOP_OF_STRUCTURE` entities, producing React Flow nodes and edges
 
 The UI is a "Control Room" layout:
 
@@ -69,8 +71,7 @@ Provide the firm's fund managers, legal teams, and operations staff with a singl
 
 | Layer | Technology |
 |---|---|
-| Backend | Python, FastAPI, Motor (async MongoDB driver) |
-| Database | MongoDB |
-| Frontend | React 19, React Flow, Dagre, Tailwind CSS, Shadcn/UI |
-| PDF export | html2canvas, jsPDF |
+| Backend | Python, FastAPI (health check only) |
+| Frontend | React 19, React Flow, Dagre, Tailwind CSS, Shadcn/UI, PapaParse |
+| PDF export | html-to-image, jsPDF |
 | Fonts | Chivo (headings), IBM Plex Mono (data/mono) |
