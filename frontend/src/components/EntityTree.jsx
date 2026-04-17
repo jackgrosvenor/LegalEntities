@@ -8,6 +8,8 @@ import ReactFlow, {
   useReactFlow,
   ReactFlowProvider,
   MarkerType,
+  getNodesBounds,
+  getViewportForBounds,
 } from 'reactflow';
 import dagre from 'dagre';
 import 'reactflow/dist/style.css';
@@ -16,7 +18,7 @@ import OwnershipEdge from './OwnershipEdge';
 import EntityDrawer from './EntityDrawer';
 import { TreeStructure, Spinner, ArrowsOutSimple, ArrowsInSimple, ArrowsOut, FilePdf } from '@phosphor-icons/react';
 import axios from 'axios';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -94,7 +96,7 @@ function getDescendants(nodeId, parentToChildren) {
 }
 
 function EntityTreeInner({ fundId }) {
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes } = useReactFlow();
   const [allNodes, setAllNodes] = useState([]);
   const [allEdges, setAllEdges] = useState([]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -226,63 +228,75 @@ function EntityTreeInner({ fundId }) {
   }, [fitView]);
 
   const handleExportPdf = useCallback(async () => {
-    const viewport = document.querySelector('.react-flow__viewport');
-    if (!viewport) return;
+    const viewportEl = document.querySelector('.react-flow__viewport');
+    if (!viewportEl) return;
 
     setExporting(true);
     try {
-      // Get the bounding box of all nodes to determine the full diagram area
-      const nodeElements = document.querySelectorAll('.react-flow__node');
-      if (nodeElements.length === 0) { setExporting(false); return; }
+      const currentNodes = getNodes();
+      if (currentNodes.length === 0) { setExporting(false); return; }
 
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      nodeElements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        minX = Math.min(minX, rect.left);
-        minY = Math.min(minY, rect.top);
-        maxX = Math.max(maxX, rect.right);
-        maxY = Math.max(maxY, rect.bottom);
-      });
+      // Calculate the bounding box of ALL visible nodes
+      const bounds = getNodesBounds(currentNodes);
 
-      // Capture the entire react-flow container (includes edges + nodes)
-      const flowContainer = document.querySelector('.react-flow');
-      if (!flowContainer) { setExporting(false); return; }
+      // Expand bounds with padding for breathing room
+      const padding = 60;
+      const paddedBounds = {
+        x: bounds.x - padding,
+        y: bounds.y - padding,
+        width: bounds.width + padding * 2,
+        height: bounds.height + padding * 2,
+      };
 
-      const canvas = await html2canvas(flowContainer, {
-        useCORS: true,
-        allowTaint: true,
+      // Set export image dimensions — scale up for crisp output
+      const scale = 2;
+      const maxDim = 8000;
+      let imageWidth = Math.min(paddedBounds.width * scale, maxDim);
+      let imageHeight = Math.min(paddedBounds.height * scale, maxDim);
+
+      // Maintain aspect ratio if capped
+      const scaleFactor = Math.min(maxDim / (paddedBounds.width * scale), maxDim / (paddedBounds.height * scale), 1);
+      imageWidth = Math.round(paddedBounds.width * scale * scaleFactor);
+      imageHeight = Math.round(paddedBounds.height * scale * scaleFactor);
+
+      // Get the optimal viewport transform to frame all nodes
+      const viewport = getViewportForBounds(
+        paddedBounds,
+        imageWidth,
+        imageHeight,
+        0.1,  // minZoom
+        2     // maxZoom
+      );
+
+      // Capture the viewport element with the computed transform
+      const dataUrl = await toPng(viewportEl, {
         backgroundColor: '#F4F4F5',
-        scale: 2,
-        logging: false,
-        // Exclude overlays like controls, minimap, buttons from the capture
-        ignoreElements: (element) => {
-          if (element.classList?.contains('react-flow__controls')) return true;
-          if (element.classList?.contains('react-flow__minimap')) return true;
-          if (element.getAttribute?.('data-testid') === 'tree-actions') return true;
-          if (element.getAttribute?.('data-testid') === 'fund-header') return true;
-          if (element.getAttribute?.('data-testid') === 'tree-legend-area') return true;
-          if (element.getAttribute?.('data-testid') === 'entity-drawer') return true;
-          return false;
-        }
+        width: imageWidth,
+        height: imageHeight,
+        skipFonts: true,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        },
+        filter: (node) => {
+          // Exclude UI overlays from the capture
+          if (node?.classList?.contains('react-flow__minimap')) return false;
+          if (node?.classList?.contains('react-flow__controls')) return false;
+          return true;
+        },
       });
 
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
+      // Create PDF — choose page size and orientation based on tree shape
+      const aspectRatio = imageWidth / imageHeight;
+      const orientation = aspectRatio >= 0.9 ? 'landscape' : 'portrait';
+      const format = nodes.length > 40 ? 'a3' : 'a4';
 
-      // Use landscape A3 for large trees, A4 for smaller ones
-      const isLarge = nodes.length > 50;
-      const format = isLarge ? 'a3' : 'a4';
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: format,
-      });
-
+      const pdf = new jsPDF({ orientation, unit: 'mm', format });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Add title header
+      // Title header
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(14);
       pdf.text(`${fundName || 'Fund'} — Entity Structure`, 10, 12);
@@ -295,36 +309,36 @@ function EntityTreeInner({ fundId }) {
       );
       pdf.setTextColor(0);
 
-      // Calculate image dimensions to fit page (with margins and header space)
-      const margin = 10;
+      // Fit image to page with margins
+      const margin = 8;
       const headerOffset = 22;
-      const availableWidth = pageWidth - margin * 2;
-      const availableHeight = pageHeight - headerOffset - margin;
+      const footerSpace = 8;
+      const availW = pageWidth - margin * 2;
+      const availH = pageHeight - headerOffset - footerSpace;
+      const fitRatio = Math.min(availW / imageWidth, availH / imageHeight);
+      const drawW = imageWidth * fitRatio;
+      const drawH = imageHeight * fitRatio;
+      const offX = margin + (availW - drawW) / 2;
+      const offY = headerOffset + (availH - drawH) / 2;
 
-      const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
-      const drawWidth = imgWidth * ratio;
-      const drawHeight = imgHeight * ratio;
+      pdf.addImage(dataUrl, 'PNG', offX, offY, drawW, drawH);
 
-      // Center the image
-      const offsetX = margin + (availableWidth - drawWidth) / 2;
-      const offsetY = headerOffset + (availableHeight - drawHeight) / 2;
-
-      pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawWidth, drawHeight);
-
-      // Add legend footer
-      const footerY = pageHeight - 5;
+      // Legend footer
       pdf.setFontSize(7);
       pdf.setTextColor(120);
-      pdf.text('Legend: Blue solid = Equity | Orange dashed = General Partner | Black node = Top of Structure', margin, footerY);
+      pdf.text(
+        'Legend: Blue solid = Equity | Orange dashed = General Partner | Black node = Top of Structure',
+        margin,
+        pageHeight - 4
+      );
 
-      const fileName = `${(fundName || 'fund').replace(/\s+/g, '_')}_structure.pdf`;
-      pdf.save(fileName);
+      pdf.save(`${(fundName || 'fund').replace(/\s+/g, '_')}_structure.pdf`);
     } catch (err) {
       console.error('PDF export failed:', err);
     } finally {
       setExporting(false);
     }
-  }, [fundName, nodes, allNodes, edges]);
+  }, [fundName, nodes, allNodes, edges, getNodes]);
 
   const defaultEdgeOptions = useMemo(() => ({ type: 'ownershipEdge' }), []);
 
