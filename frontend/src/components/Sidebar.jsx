@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MagnifyingGlass, FunnelSimple, TreeStructure, X, CaretDown } from '@phosphor-icons/react';
+import { MagnifyingGlass, FunnelSimple, TreeStructure, X, CaretDown, UploadSimple } from '@phosphor-icons/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,7 +7,7 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick }) {
+export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick, onUploadClick, dataVersion }) {
   const [funds, setFunds] = useState([]);
   const [entities, setEntities] = useState([]);
   const [totalEntities, setTotalEntities] = useState(0);
@@ -18,11 +18,11 @@ export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick })
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Load funds and filter options on mount
+  // Load funds and filter options on mount and after data refresh
   useEffect(() => {
     axios.get(`${API}/funds`).then(res => setFunds(res.data.funds || []));
     axios.get(`${API}/entities/filters`).then(res => setFilters(res.data));
-  }, []);
+  }, [dataVersion]);
 
   // Search/filter entities
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick })
         setTotalEntities(res.data.total || 0);
       })
       .finally(() => setLoading(false));
-  }, [search, jurisdiction, entityType, selectedFundId]);
+  }, [search, jurisdiction, entityType, selectedFundId, dataVersion]);
 
   const clearFilters = () => {
     setSearch('');
@@ -54,11 +54,22 @@ export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick })
     <div className="w-80 flex-shrink-0 bg-white border-r-2 border-neutral-900 h-full flex flex-col z-20" data-testid="sidebar">
       {/* Header */}
       <div className="p-4 border-b-2 border-neutral-900">
-        <div className="flex items-center gap-2 mb-1">
-          <TreeStructure size={20} weight="bold" className="text-neutral-900" />
-          <h1 className="text-lg font-bold font-heading tracking-tight text-neutral-900">
-            Entity Map
-          </h1>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <TreeStructure size={20} weight="bold" className="text-neutral-900" />
+            <h1 className="text-lg font-bold font-heading tracking-tight text-neutral-900">
+              Entity Map
+            </h1>
+          </div>
+          <button
+            data-testid="upload-data-btn"
+            onClick={onUploadClick}
+            className="flex items-center gap-1.5 bg-neutral-900 text-white px-2.5 py-1.5 hover:bg-neutral-800 transition-colors"
+            title="Upload new CSV dataset"
+          >
+            <UploadSimple size={12} weight="bold" />
+            <span className="text-[10px] font-mono uppercase tracking-wider">Upload</span>
+          </button>
         </div>
         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-neutral-500">
           Private Equity Structure

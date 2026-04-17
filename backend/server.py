@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Query
+from fastapi import FastAPI, APIRouter, Query, UploadFile, File
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,6 +6,7 @@ import os
 import logging
 import csv
 import json
+import io
 from pathlib import Path
 from typing import Optional
 
@@ -279,6 +280,89 @@ async def get_fund_tree(fund_id: int):
             break
 
     return {"nodes": nodes, "edges": edges, "fund_name": fund_name}
+
+
+@api_router.post("/upload")
+async def upload_csv_data(
+    entity_master: UploadFile = File(...),
+    entity_relations: UploadFile = File(...)
+):
+    """Upload new CSV files to replace the current dataset."""
+    try:
+        # Read and parse Entity Master
+        master_content = await entity_master.read()
+        master_text = master_content.decode('utf-8-sig')
+        master_reader = csv.DictReader(io.StringIO(master_text))
+        entities = []
+        for row in master_reader:
+            entity = parse_csv_row(row)
+            if entity.get('SYMBOLOGIES') and isinstance(entity['SYMBOLOGIES'], str):
+                try:
+                    entity['SYMBOLOGIES'] = json.loads(entity['SYMBOLOGIES'])
+                except json.JSONDecodeError:
+                    entity['SYMBOLOGIES'] = None
+            entities.append(entity)
+
+        if not entities:
+            return {"success": False, "error": "Entity Master CSV is empty or could not be parsed"}
+
+        # Validate required columns
+        required_entity_cols = {'ENTITY_ID', 'COMPANY_NAME'}
+        actual_cols = set(entities[0].keys())
+        missing = required_entity_cols - actual_cols
+        if missing:
+            return {"success": False, "error": f"Entity Master CSV missing required columns: {missing}"}
+
+        # Read and parse Entity Relations
+        relations_content = await entity_relations.read()
+        relations_text = relations_content.decode('utf-8-sig')
+        relations_reader = csv.DictReader(io.StringIO(relations_text))
+        relations = []
+        for row in relations_reader:
+            relation = parse_csv_row(row)
+            relations.append(relation)
+
+        if not relations:
+            return {"success": False, "error": "Entity Relations CSV is empty or could not be parsed"}
+
+        required_relation_cols = {'PARENT_ID', 'CHILD_ID'}
+        actual_rel_cols = set(relations[0].keys())
+        missing_rel = required_relation_cols - actual_rel_cols
+        if missing_rel:
+            return {"success": False, "error": f"Entity Relations CSV missing required columns: {missing_rel}"}
+
+        # Drop existing data and insert new
+        await db.entities.drop()
+        await db.relations.drop()
+
+        await db.entities.insert_many(entities)
+        await db.relations.insert_many(relations)
+
+        # Recreate indexes
+        await db.entities.create_index("ENTITY_ID")
+        await db.entities.create_index("FUND_ID")
+        await db.entities.create_index("IS_TOP_OF_STRUCTURE")
+        await db.entities.create_index("COMPANY_NAME")
+        await db.relations.create_index("PARENT_ID")
+        await db.relations.create_index("CHILD_ID")
+
+        # Count stats
+        fund_count = len(await db.entities.distinct("FUND_ID", {"FUND_ID": {"$ne": None}}))
+
+        logger.info(f"Upload complete: {len(entities)} entities, {len(relations)} relations, {fund_count} funds")
+
+        return {
+            "success": True,
+            "entities_count": len(entities),
+            "relations_count": len(relations),
+            "funds_count": fund_count
+        }
+
+    except UnicodeDecodeError:
+        return {"success": False, "error": "Could not decode CSV files. Please ensure they are UTF-8 encoded."}
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        return {"success": False, "error": str(e)}
 
 
 app.include_router(api_router)
