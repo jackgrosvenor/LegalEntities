@@ -4,7 +4,7 @@
 
 This application maps the legal entity structures within a private equity firm. It takes two source datasets — an **Entity Master** list and an **Entity Relations** map — and renders them as interactive, navigable hierarchy trees grouped by fund.
 
-The firm manages 52 funds across a portfolio of 1,756 legal entities connected by 1,917 parent-child relationships. Each relationship carries an ownership percentage and a type (Equity or General Partner). This tool lets users select any fund and instantly see its full corporate structure from the top-level LP down through every holding company, SPV, and operating entity.
+The tool supports portfolios of any scale — from a handful of entities to thousands — connected by parent-child relationships. Each relationship carries an ownership percentage and a type (Equity or General Partner). This tool lets users select any fund and instantly see its full corporate structure from the top-level LP down through every holding company, SPV, and operating entity.
 
 ## How it works
 
