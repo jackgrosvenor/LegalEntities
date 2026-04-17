@@ -1,7 +1,8 @@
 {
-  "installCommand": "cd frontend && npm install --legacy-peer-deps",
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/build",
+  "rootDirectory": "frontend",
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" }
   ]
