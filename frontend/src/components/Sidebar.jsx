@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
-import { MagnifyingGlass, FunnelSimple, TreeStructure, X, CaretDown, UploadSimple } from '@phosphor-icons/react';
+import { MagnifyingGlass, FunnelSimple, TreeStructure, X, CaretDown, UploadSimple, Trash } from '@phosphor-icons/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { searchEntities } from '@/lib/dataService';
 
-export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick, onUploadClick, dataset }) {
+export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick, onUploadClick, onClearData, dataset }) {
   const [search, setSearch] = useState('');
   const [jurisdiction, setJurisdiction] = useState('');
   const [entityType, setEntityType] = useState('');
@@ -43,6 +43,11 @@ export default function Sidebar({ selectedFundId, onFundSelect, onEntityClick, o
             title="Upload new CSV dataset">
             <UploadSimple size={12} weight="bold" />
             <span className="text-[10px] font-mono uppercase tracking-wider">Upload</span>
+          </button>
+          <button data-testid="clear-data-btn" onClick={onClearData}
+            className="flex items-center gap-1.5 border-2 border-neutral-300 text-neutral-500 px-2 py-1 hover:border-red-600 hover:text-red-600 transition-colors"
+            title="Clear data and return to upload screen">
+            <Trash size={12} weight="bold" />
           </button>
         </div>
         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-neutral-500">Private Equity Structure</span>

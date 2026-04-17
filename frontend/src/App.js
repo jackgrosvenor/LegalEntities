@@ -4,7 +4,7 @@ import Sidebar from '@/components/Sidebar';
 import EntityTree from '@/components/EntityTree';
 import EntityDrawer from '@/components/EntityDrawer';
 import UploadModal from '@/components/UploadModal';
-import { saveToStorage, loadFromStorage } from '@/lib/dataService';
+import { saveToStorage, loadFromStorage, clearStorage } from '@/lib/dataService';
 
 function App() {
   // Core data state — null means no data loaded yet
@@ -31,6 +31,14 @@ function App() {
 
   const handleReupload = useCallback(() => {
     setShowUpload(true);
+  }, []);
+
+  const handleClearData = useCallback(() => {
+    clearStorage();
+    setDataset(null);
+    setSelectedFundId(null);
+    setDrawerEntityId(null);
+    setShowUpload(false);
   }, []);
 
   const hasData = dataset !== null;
@@ -70,6 +78,7 @@ function App() {
         onFundSelect={setSelectedFundId}
         onEntityClick={setDrawerEntityId}
         onUploadClick={handleReupload}
+        onClearData={handleClearData}
         dataset={dataset}
       />
       <div className="flex-1 relative h-full">
