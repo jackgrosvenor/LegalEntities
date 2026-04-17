@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm install --legacy-peer-deps && npm run build",
+  "outputDirectory": "build",
+  "installCommand": "echo 'skipping root install'",
+  "framework": "create-react-app",
+  "rootDirectory": "frontend"
+}
