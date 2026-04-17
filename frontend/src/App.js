@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import '@/App.css';
 import Sidebar from '@/components/Sidebar';
 import EntityTree from '@/components/EntityTree';
 import EntityDrawer from '@/components/EntityDrawer';
 import UploadModal from '@/components/UploadModal';
+import { saveToStorage, loadFromStorage } from '@/lib/dataService';
 
 function App() {
   // Core data state — null means no data loaded yet
@@ -11,9 +12,18 @@ function App() {
   const [selectedFundId, setSelectedFundId] = useState(null);
   const [drawerEntityId, setDrawerEntityId] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Restore from localStorage on mount
+  useEffect(() => {
+    const stored = loadFromStorage();
+    if (stored) setDataset(stored);
+    setReady(true);
+  }, []);
 
   const handleDataLoaded = useCallback((data) => {
     setDataset(data);
+    saveToStorage(data);
     setSelectedFundId(null);
     setDrawerEntityId(null);
     setShowUpload(false);
@@ -24,6 +34,9 @@ function App() {
   }, []);
 
   const hasData = dataset !== null;
+
+  // Wait for localStorage check before rendering
+  if (!ready) return null;
 
   // Show initial upload modal if no data loaded
   if (!hasData && !showUpload) {

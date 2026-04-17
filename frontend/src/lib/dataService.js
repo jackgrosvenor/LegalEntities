@@ -240,3 +240,48 @@ export function buildFundTree(fundId, entities, relations) {
   const fund_name = roots[0]?.FUND_NAME || '';
   return { nodes, edges, fund_name };
 }
+
+
+const STORAGE_KEY = 'pe-entity-map-dataset';
+
+/**
+ * Save dataset to localStorage.
+ */
+export function saveToStorage(dataset) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      entities: dataset.entities,
+      relations: dataset.relations,
+    }));
+  } catch {
+    // Storage full or unavailable — silently ignore
+  }
+}
+
+/**
+ * Load dataset from localStorage and recompute derived data (funds, filters).
+ * Returns null if nothing stored or data is invalid.
+ */
+export function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const { entities, relations } = JSON.parse(raw);
+    if (!entities?.length || !relations?.length) return null;
+    return {
+      entities,
+      relations,
+      funds: getFunds(entities),
+      filters: getFilters(entities),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear persisted dataset.
+ */
+export function clearStorage() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+}
